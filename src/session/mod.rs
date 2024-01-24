@@ -36,6 +36,8 @@ use crate::environment::Environment;
 
 pub(crate) mod input;
 pub(crate) mod output;
+mod run;
+
 pub use self::{input::SessionInputs, output::SessionOutputs};
 
 /// Type used to create a session using the _builder pattern_. Once created with [`Session::builder`], you can use the
