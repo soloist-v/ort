@@ -36,7 +36,6 @@ use crate::environment::Environment;
 
 pub(crate) mod input;
 pub(crate) mod output;
-mod run;
 
 pub use self::{input::SessionInputs, output::SessionOutputs};
 

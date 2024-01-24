@@ -19,6 +19,7 @@ pub(crate) mod metadata;
 pub(crate) mod session;
 pub(crate) mod tensor;
 pub(crate) mod value;
+pub(crate) mod run;
 
 #[cfg(feature = "load-dynamic")]
 use std::sync::MutexGuard;
@@ -48,6 +49,7 @@ pub use self::session::{InMemorySession, RunOptions, Session, SessionBuilder, Se
 pub use self::tensor::{ArrayExtensions, ArrayViewHolder, Tensor, TensorData};
 pub use self::tensor::{ExtractTensorData, IntoTensorElementType, TensorElementType};
 pub use self::value::{Value, ValueRef, ValueType};
+pub use self::run::RustOwnerValue;
 
 #[cfg(not(all(target_arch = "x86", target_os = "windows")))]
 macro_rules! extern_system_fn {
