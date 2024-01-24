@@ -106,6 +106,7 @@ impl<Container, T> RustOwnerValue<Container>
 }
 
 impl<'a> RustOwnerValue<&'a [u8]> {
+    /// for shared memory
     pub fn with_any_type(shape: &[i64], data: &'a [u8], type_: i32) -> crate::Result<Self> {
         assert!(type_ >= ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED as i32 &&
             type_ <= ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_BFLOAT16 as i32);
@@ -141,6 +142,7 @@ impl<'a> RustOwnerValue<&'a [u8]> {
 }
 
 impl<'a> RustOwnerValue<&'a mut [u8]> {
+    /// for shared memory
     pub fn with_any_type_mut(shape: &[i64], data: &'a mut [u8], type_: i32) -> crate::Result<Self> {
         assert!(type_ >= ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED as i32 &&
             type_ <= ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_BFLOAT16 as i32);
