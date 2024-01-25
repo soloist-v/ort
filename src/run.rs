@@ -1,6 +1,5 @@
 use std::ffi::CString;
 use std::fmt::Debug;
-use std::os::raw::c_char;
 use std::sync::Arc;
 use ort_sys::ONNXTensorElementDataType;
 use crate::{AllocatorType, Error, IntoTensorElementType, MemoryInfo, MemType, ortsys, RunOptions};
@@ -177,30 +176,177 @@ impl<'a> RustOwnerValue<&'a mut [u8]> {
     }
 }
 
+pub struct IONames {
+    ptrs: Vec<*const std::ffi::c_char>,
+    names: Vec<CString>,
+}
+
+impl IONames {
+    #[inline]
+    pub fn new<T: AsRef<str>>(value: &[T]) -> Self {
+        Self::from(value)
+    }
+}
+
+impl IONames {
+    pub fn as_ptr(&self) -> *const *const std::ffi::c_char {
+        self.ptrs.as_ptr()
+    }
+
+    pub fn len(&self) -> usize {
+        self.ptrs.len()
+    }
+}
+
+impl<T: AsRef<str>> From<Vec<T>> for IONames {
+    fn from(value: Vec<T>) -> Self {
+        let mut ptrs = Vec::with_capacity(value.len());
+        let mut names = Vec::with_capacity(value.len());
+        for name in value {
+            let name = CString::new(name.as_ref()).unwrap();
+            ptrs.push(name.as_ptr());
+            names.push(name);
+        }
+        Self {
+            ptrs,
+            names,
+        }
+    }
+}
+
+impl<'a, T: AsRef<str>> From<&'a [T]> for IONames {
+    fn from(value: &'a [T]) -> Self {
+        let mut ptrs = Vec::with_capacity(value.len());
+        let mut names = Vec::with_capacity(value.len());
+        for name in value {
+            let a = name.as_ref();
+            let name = CString::new(a).unwrap();
+            ptrs.push(name.as_ptr());
+            names.push(name);
+        }
+        Self {
+            ptrs,
+            names,
+        }
+    }
+}
+
+impl<'a, T: AsRef<str>, const N: usize> From<[T; N]> for IONames {
+    fn from(value: [T; N]) -> Self {
+        let mut ptrs = Vec::with_capacity(value.len());
+        let mut names = Vec::with_capacity(value.len());
+        for name in value {
+            let a = name.as_ref();
+            let name = CString::new(a).unwrap();
+            ptrs.push(name.as_ptr());
+            names.push(name);
+        }
+        Self {
+            ptrs,
+            names,
+        }
+    }
+}
+
+pub struct Values<Container> {
+    ptrs: Vec<*mut ort_sys::OrtValue>,
+    values: Vec<RustOwnerValue<Container>>,
+}
+
+impl<Container> Values<Container> {
+    #[inline]
+    pub fn new(values_: Vec<RustOwnerValue<Container>>) -> Self {
+        Self::from(values_)
+    }
+}
+
+impl<T, Container> std::ops::Index<usize> for Values<Container>
+    where
+        Container: std::ops::Deref<Target=[T]>,
+        T: IntoTensorElementType + Debug + Clone + 'static,
+{
+    type Output = RustOwnerValue<Container>;
+
+    #[inline]
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.values[index]
+    }
+}
+
+impl<T, Container> std::ops::IndexMut<usize> for Values<Container>
+    where
+        Container: std::ops::DerefMut<Target=[T]>,
+        T: IntoTensorElementType + Debug + Clone + 'static,
+{
+    #[inline]
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.values[index]
+    }
+}
+
+impl<T, Container> Values<Container>
+    where
+        Container: std::ops::Deref<Target=[T]>,
+        T: IntoTensorElementType + Debug + Clone + 'static,
+{
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.ptrs.len()
+    }
+    #[inline]
+    pub fn as_ptr(&self) -> *const *const ort_sys::OrtValue {
+        self.ptrs.as_ptr() as _
+    }
+    #[inline]
+    pub fn as_slice(&self) -> &[RustOwnerValue<Container>] {
+        self.values.as_slice()
+    }
+}
+
+impl<T, Container> Values<Container>
+    where
+        Container: std::ops::DerefMut<Target=[T]>,
+        T: IntoTensorElementType + Debug + Clone + 'static, {
+    #[inline]
+    pub fn as_mut_ptr(&mut self) -> *mut *mut ort_sys::OrtValue {
+        self.ptrs.as_mut_ptr()
+    }
+    #[inline]
+    pub fn as_mut_slice(&mut self) -> &mut [RustOwnerValue<Container>] {
+        self.values.as_mut_slice()
+    }
+}
+
+impl<Container> From<Vec<RustOwnerValue<Container>>> for Values<Container> {
+    #[inline]
+    fn from(values_: Vec<RustOwnerValue<Container>>) -> Self {
+        let mut values = Vec::with_capacity(values_.len());
+        let mut ptrs = Vec::with_capacity(values.len());
+        for value in values_ {
+            let ptr = value.ptr;
+            ptrs.push(ptr);
+            values.push(value);
+        }
+        Self {
+            ptrs,
+            values,
+        }
+    }
+}
+
 impl super::Session {
-    pub fn run_io<I, O, CIn, COut>(&self,
-                                   input_names: &[&str],
-                                   inputs: &[RustOwnerValue<CIn>],
-                                   outputs: &mut [RustOwnerValue<COut>],
-                                   run_options: Option<Arc<RunOptions>>) -> crate::Result<()>
+    pub fn run_with_io_ref<I, O, CIn, COut>(&self,
+                                            input_names: &IONames,
+                                            inputs: &[RustOwnerValue<CIn>],
+                                            output_names: &IONames,
+                                            outputs: &mut [RustOwnerValue<COut>],
+                                            run_options: Option<Arc<RunOptions>>) -> crate::Result<()>
         where
             CIn: std::ops::Deref<Target=[I]>,
             COut: std::ops::DerefMut<Target=[O]>,
             I: IntoTensorElementType + Debug + Clone + 'static,
             O: IntoTensorElementType + Debug + Clone + 'static,
     {
-        assert_eq!(outputs.len(), self.outputs.len());
-        let input_names_ptr: Vec<*const c_char> = input_names
-            .iter()
-            .map(|n| CString::new(*n).unwrap())
-            .map(|n| n.into_raw() as *const c_char)
-            .collect();
-        let output_names_ptr: Vec<*const c_char> = self
-            .outputs
-            .iter()
-            .map(|output| CString::new(output.name.as_str()).unwrap())
-            .map(|n| n.into_raw() as *const c_char)
-            .collect();
         // The C API expects pointers for the arrays (pointers to C-arrays)
         let input_ort_values: Vec<*const ort_sys::OrtValue> = inputs.iter().map(|a| a.ptr()).collect();
         let mut output_tensor_ptrs: Vec<*mut ort_sys::OrtValue> = outputs.iter_mut().map(|a| a.ptr_mut()).collect();
@@ -213,25 +359,47 @@ impl super::Session {
 			unsafe Run(
 				self.inner.session_ptr,
 				run_options_ptr,
-				input_names_ptr.as_ptr(),
+				input_names.as_ptr(),
 				input_ort_values.as_ptr(),
 				input_ort_values.len() as _,
-				output_names_ptr.as_ptr(),
-				output_names_ptr.len() as _,
+				output_names.as_ptr(),
+				output_names.len() as _,
 				output_tensor_ptrs.as_mut_ptr()
 			) -> Error::SessionRun
 		];
-        // Reconvert name ptrs to CString so drop impl is called and memory is freed
-        drop(
-            input_names_ptr
-                .into_iter()
-                .chain(output_names_ptr.into_iter())
-                .map(|p| {
-                    assert_non_null_pointer(p, "c_char for CString")?;
-                    unsafe { Ok(CString::from_raw(p as *mut c_char)) }
-                })
-                .collect::<crate::Result<Vec<_>>>()?
-        );
+        Ok(())
+    }
+
+    pub fn run_with_values<I, O, CIn, COut>(&self,
+                                            input_names: &IONames,
+                                            inputs: &Values<CIn>,
+                                            output_names: &IONames,
+                                            outputs: &mut Values<COut>,
+                                            run_options: Option<Arc<RunOptions>>) -> crate::Result<()>
+        where
+            CIn: std::ops::Deref<Target=[I]>,
+            COut: std::ops::DerefMut<Target=[O]>,
+            I: IntoTensorElementType + Debug + Clone + 'static,
+            O: IntoTensorElementType + Debug + Clone + 'static,
+    {
+        // The C API expects pointers for the arrays (pointers to C-arrays)
+        let run_options_ptr = if let Some(run_options) = &run_options {
+            run_options.run_options_ptr
+        } else {
+            std::ptr::null_mut()
+        };
+        ortsys![
+			unsafe Run(
+				self.inner.session_ptr,
+				run_options_ptr,
+				input_names.as_ptr(),
+				inputs.as_ptr(),
+				inputs.len() as _,
+				output_names.as_ptr(),
+				output_names.len() as _,
+				outputs.as_mut_ptr()
+			) -> Error::SessionRun
+		];
         Ok(())
     }
 }
