@@ -176,29 +176,39 @@ impl<'a> RustOwnerValue<&'a mut [u8]> {
     }
 }
 
-pub struct Names {
+pub struct Names<Container> {
     ptrs: Vec<*const std::ffi::c_char>,
-    names: Vec<CString>,
+    names: Container,
 }
 
-impl Names {
+impl<T, Container> Names<Container>
+    where
+        Container: std::ops::Deref<Target=[T]>,
+        T: AsRef<std::ffi::CStr>,
+{
     #[inline]
-    pub fn new<T: AsRef<str>>(value: &[T]) -> Self {
-        Self::from(value)
+    pub fn new(names: Container) -> Self {
+        let mut ptrs = Vec::with_capacity(names.len());
+        for name in names.iter() {
+            let name = name.as_ref();
+            ptrs.push(name.as_ptr());
+        }
+        Self {
+            ptrs,
+            names,
+        }
     }
-}
-
-impl Names {
+    #[inline]
     pub fn as_ptr(&self) -> *const *const std::ffi::c_char {
         self.ptrs.as_ptr()
     }
-
+    #[inline]
     pub fn len(&self) -> usize {
         self.ptrs.len()
     }
 }
 
-impl<T: AsRef<str>> From<Vec<T>> for Names {
+impl<T: AsRef<str>> From<Vec<T>> for Names<Vec<CString>> {
     fn from(value: Vec<T>) -> Self {
         let mut ptrs = Vec::with_capacity(value.len());
         let mut names = Vec::with_capacity(value.len());
@@ -214,7 +224,7 @@ impl<T: AsRef<str>> From<Vec<T>> for Names {
     }
 }
 
-impl<'a, T: AsRef<str>> From<&'a [T]> for Names {
+impl<'a, T: AsRef<str>> From<&'a [T]> for Names<Vec<CString>> {
     fn from(value: &'a [T]) -> Self {
         let mut ptrs = Vec::with_capacity(value.len());
         let mut names = Vec::with_capacity(value.len());
@@ -231,7 +241,7 @@ impl<'a, T: AsRef<str>> From<&'a [T]> for Names {
     }
 }
 
-impl<'a, T: AsRef<str>, const N: usize> From<[T; N]> for Names {
+impl<'a, T: AsRef<str>, const N: usize> From<[T; N]> for Names<Vec<CString>> {
     fn from(value: [T; N]) -> Self {
         let mut ptrs = Vec::with_capacity(value.len());
         let mut names = Vec::with_capacity(value.len());
@@ -335,17 +345,19 @@ impl<Container> From<Vec<RustOwnerValue<Container>>> for Values<Container> {
 }
 
 impl super::Session {
-    pub fn run_with_io_ref<I, O, CIn, COut>(&self,
-                                            input_names: &Names,
-                                            inputs: &[RustOwnerValue<CIn>],
-                                            output_names: &Names,
-                                            outputs: &mut [RustOwnerValue<COut>],
-                                            run_options: Option<Arc<RunOptions>>) -> crate::Result<()>
+    pub fn run_with_io_ref<I, O, CIn, COut, S, CNames>(&self,
+                                                       input_names: &Names<CNames>,
+                                                       inputs: &[RustOwnerValue<CIn>],
+                                                       output_names: &Names<CNames>,
+                                                       outputs: &mut [RustOwnerValue<COut>],
+                                                       run_options: Option<Arc<RunOptions>>) -> crate::Result<()>
         where
             CIn: std::ops::Deref<Target=[I]>,
             COut: std::ops::DerefMut<Target=[O]>,
             I: IntoTensorElementType + Debug + Clone + 'static,
             O: IntoTensorElementType + Debug + Clone + 'static,
+            CNames: std::ops::Deref<Target=[S]>,
+            S: AsRef<std::ffi::CStr>,
     {
         // The C API expects pointers for the arrays (pointers to C-arrays)
         let input_ort_values: Vec<*const ort_sys::OrtValue> = inputs.iter().map(|a| a.ptr()).collect();
@@ -370,17 +382,19 @@ impl super::Session {
         Ok(())
     }
 
-    pub fn run_with_values<I, O, CIn, COut>(&self,
-                                            input_names: &Names,
-                                            inputs: &Values<CIn>,
-                                            output_names: &Names,
-                                            outputs: &mut Values<COut>,
-                                            run_options: Option<Arc<RunOptions>>) -> crate::Result<()>
+    pub fn run_with_values<I, O, CIn, COut, S, CNames>(&self,
+                                                       input_names: &Names<CNames>,
+                                                       inputs: &Values<CIn>,
+                                                       output_names: &Names<CNames>,
+                                                       outputs: &mut Values<COut>,
+                                                       run_options: Option<Arc<RunOptions>>) -> crate::Result<()>
         where
             CIn: std::ops::Deref<Target=[I]>,
             COut: std::ops::DerefMut<Target=[O]>,
             I: IntoTensorElementType + Debug + Clone + 'static,
             O: IntoTensorElementType + Debug + Clone + 'static,
+            CNames: std::ops::Deref<Target=[S]>,
+            S: AsRef<std::ffi::CStr>,
     {
         // The C API expects pointers for the arrays (pointers to C-arrays)
         let run_options_ptr = if let Some(run_options) = &run_options {
