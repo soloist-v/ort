@@ -345,7 +345,7 @@ impl<Container> From<Vec<RustOwnerValue<Container>>> for Values<Container> {
 }
 
 impl super::Session {
-    pub fn run_with_io_ref<I, O, CIn, COut, S, CNames>(&self,
+    pub fn run_with_io_ref<I, O, S, CIn, COut, CNames>(&self,
                                                        input_names: &Names<CNames>,
                                                        inputs: &[RustOwnerValue<CIn>],
                                                        output_names: &Names<CNames>,
@@ -354,9 +354,9 @@ impl super::Session {
         where
             CIn: std::ops::Deref<Target=[I]>,
             COut: std::ops::DerefMut<Target=[O]>,
+            CNames: std::ops::Deref<Target=[S]>,
             I: IntoTensorElementType + Debug + Clone + 'static,
             O: IntoTensorElementType + Debug + Clone + 'static,
-            CNames: std::ops::Deref<Target=[S]>,
             S: AsRef<std::ffi::CStr>,
     {
         // The C API expects pointers for the arrays (pointers to C-arrays)
@@ -382,7 +382,7 @@ impl super::Session {
         Ok(())
     }
 
-    pub fn run_with_values<I, O, CIn, COut, S, CNames>(&self,
+    pub fn run_with_values<I, O, S, CIn, COut, CNames>(&self,
                                                        input_names: &Names<CNames>,
                                                        inputs: &Values<CIn>,
                                                        output_names: &Names<CNames>,
@@ -391,9 +391,9 @@ impl super::Session {
         where
             CIn: std::ops::Deref<Target=[I]>,
             COut: std::ops::DerefMut<Target=[O]>,
+            CNames: std::ops::Deref<Target=[S]>,
             I: IntoTensorElementType + Debug + Clone + 'static,
             O: IntoTensorElementType + Debug + Clone + 'static,
-            CNames: std::ops::Deref<Target=[S]>,
             S: AsRef<std::ffi::CStr>,
     {
         // The C API expects pointers for the arrays (pointers to C-arrays)
