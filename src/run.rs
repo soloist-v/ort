@@ -176,19 +176,19 @@ impl<'a> RustOwnerValue<&'a mut [u8]> {
     }
 }
 
-pub struct IONames {
+pub struct Names {
     ptrs: Vec<*const std::ffi::c_char>,
     names: Vec<CString>,
 }
 
-impl IONames {
+impl Names {
     #[inline]
     pub fn new<T: AsRef<str>>(value: &[T]) -> Self {
         Self::from(value)
     }
 }
 
-impl IONames {
+impl Names {
     pub fn as_ptr(&self) -> *const *const std::ffi::c_char {
         self.ptrs.as_ptr()
     }
@@ -198,7 +198,7 @@ impl IONames {
     }
 }
 
-impl<T: AsRef<str>> From<Vec<T>> for IONames {
+impl<T: AsRef<str>> From<Vec<T>> for Names {
     fn from(value: Vec<T>) -> Self {
         let mut ptrs = Vec::with_capacity(value.len());
         let mut names = Vec::with_capacity(value.len());
@@ -214,7 +214,7 @@ impl<T: AsRef<str>> From<Vec<T>> for IONames {
     }
 }
 
-impl<'a, T: AsRef<str>> From<&'a [T]> for IONames {
+impl<'a, T: AsRef<str>> From<&'a [T]> for Names {
     fn from(value: &'a [T]) -> Self {
         let mut ptrs = Vec::with_capacity(value.len());
         let mut names = Vec::with_capacity(value.len());
@@ -231,7 +231,7 @@ impl<'a, T: AsRef<str>> From<&'a [T]> for IONames {
     }
 }
 
-impl<'a, T: AsRef<str>, const N: usize> From<[T; N]> for IONames {
+impl<'a, T: AsRef<str>, const N: usize> From<[T; N]> for Names {
     fn from(value: [T; N]) -> Self {
         let mut ptrs = Vec::with_capacity(value.len());
         let mut names = Vec::with_capacity(value.len());
@@ -336,9 +336,9 @@ impl<Container> From<Vec<RustOwnerValue<Container>>> for Values<Container> {
 
 impl super::Session {
     pub fn run_with_io_ref<I, O, CIn, COut>(&self,
-                                            input_names: &IONames,
+                                            input_names: &Names,
                                             inputs: &[RustOwnerValue<CIn>],
-                                            output_names: &IONames,
+                                            output_names: &Names,
                                             outputs: &mut [RustOwnerValue<COut>],
                                             run_options: Option<Arc<RunOptions>>) -> crate::Result<()>
         where
@@ -371,9 +371,9 @@ impl super::Session {
     }
 
     pub fn run_with_values<I, O, CIn, COut>(&self,
-                                            input_names: &IONames,
+                                            input_names: &Names,
                                             inputs: &Values<CIn>,
-                                            output_names: &IONames,
+                                            output_names: &Names,
                                             outputs: &mut Values<COut>,
                                             run_options: Option<Arc<RunOptions>>) -> crate::Result<()>
         where
