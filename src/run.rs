@@ -20,6 +20,12 @@ impl<Container> Drop for RustOwnerValue<Container> {
     }
 }
 
+impl<Container> RustOwnerValue<Container> {
+    pub fn into_container(self) -> Container {
+        self.owner
+    }
+}
+
 impl<Container, T> RustOwnerValue<Container>
     where
         Container: std::ops::Deref<Target=[T]>,
