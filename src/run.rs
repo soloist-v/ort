@@ -4,8 +4,16 @@ use std::sync::Arc;
 
 pub use ort_sys::ONNXTensorElementDataType;
 
-use crate::{AllocatorType, Error, IntoTensorElementType, MemoryInfo, MemType, ortsys, RunOptions};
+use crate::{AllocatorType, IntoTensorElementType, MemoryInfo, MemType, ortsys, RunOptions};
 use crate::error::assert_non_null_pointer;
+
+#[derive(Debug, thiserror::Error)]
+pub enum RunError {
+    #[error(transparent)]
+    OrtError(#[from] crate::Error),
+    #[error("error msg: {0}")]
+    Msg(String),
+}
 
 /// allow &[T] or &mut [T] or Vec<T> or Box<[T]> or Arc<[T]>
 pub struct RustOwnerValue<Container> {
@@ -35,9 +43,11 @@ impl<Container, T> RustOwnerValue<Container>
         Container: std::ops::Deref<Target=[T]>,
         T: IntoTensorElementType + Debug + Clone + 'static,
 {
-    pub fn new(shape: &[i64], data: Container) -> crate::Result<Self> {
+    pub fn new(shape: &[i64], data: Container) -> crate::Result<Self, RunError> {
         let len = shape.iter().fold(1, |a, b| a * b);
-        assert_eq!(len as usize, data.len());
+        if data.len() < len as usize {
+            return Err(RunError::Msg(format!("data len should be >= target len: [{} >= {}]?", data.len(), len)));
+        }
         let shape_ptr: *const i64 = shape.as_ptr();
         let shape_len = shape.len();
         let memory_info = MemoryInfo::new_cpu(AllocatorType::Arena, MemType::Default)?;
@@ -53,11 +63,11 @@ impl<Container, T> RustOwnerValue<Container>
                 shape_len as _,
                 T::into_tensor_element_type().into(),
                 &mut value_ptr
-            ) -> Error::CreateTensorWithData;
+            ) -> crate::Error::CreateTensorWithData;
             nonNull(value_ptr)
         ];
         let mut is_tensor = 0;
-        ortsys![unsafe IsTensor(value_ptr, &mut is_tensor) -> Error::FailedTensorCheck];
+        ortsys![unsafe IsTensor(value_ptr, &mut is_tensor) -> crate::Error::FailedTensorCheck];
         assert_eq!(is_tensor, 1);
         Ok(Self {
             ptr: value_ptr,
@@ -81,9 +91,11 @@ impl<Container, T> RustOwnerValue<Container>
         Container: std::ops::DerefMut<Target=[T]>,
         T: IntoTensorElementType + Debug + Clone + 'static,
 {
-    pub fn new_mut(shape: &[i64], mut data: Container) -> crate::Result<Self> {
+    pub fn new_mut(shape: &[i64], mut data: Container) -> crate::Result<Self, RunError> {
         let len = shape.iter().fold(1, |a, b| a * b);
-        assert_eq!(len as usize, data.len());
+        if data.len() < len as usize {
+            return Err(RunError::Msg(format!("data len should be >= target len: [{} >= {}]?", data.len(), len)));
+        }
         let shape_ptr: *const i64 = shape.as_ptr();
         let shape_len = shape.len();
         let memory_info = MemoryInfo::new_cpu(AllocatorType::Arena, MemType::Default)?;
@@ -99,11 +111,11 @@ impl<Container, T> RustOwnerValue<Container>
                 shape_len as _,
                 T::into_tensor_element_type().into(),
                 &mut value_ptr
-            ) -> Error::CreateTensorWithData;
+            ) -> crate::Error::CreateTensorWithData;
             nonNull(value_ptr)
         ];
         let mut is_tensor = 0;
-        ortsys![unsafe IsTensor(value_ptr, &mut is_tensor) -> Error::FailedTensorCheck];
+        ortsys![unsafe IsTensor(value_ptr, &mut is_tensor) -> crate::Error::FailedTensorCheck];
         assert_eq!(is_tensor, 1);
         Ok(Self {
             ptr: value_ptr,
@@ -222,10 +234,12 @@ pub fn convert_to_onnx_el_type(i: i32) -> Result<ONNXTensorElementDataType, Stri
 
 impl<'a> RustOwnerValue<&'a [u8]> {
     /// for shared memory
-    pub fn with_any_type(shape: &[i64], data: &'a [u8], type_: ONNXTensorElementDataType) -> crate::Result<Self> {
+    pub fn with_any_type(shape: &[i64], data: &'a [u8], type_: ONNXTensorElementDataType) -> crate::Result<Self, RunError> {
         let size = get_type_size(type_).unwrap();
         let len = shape.iter().fold(1, |a, b| a * b) as usize * size;
-        assert_eq!(len, data.len());
+        if data.len() < len {
+            return Err(RunError::Msg(format!("data len should be >= target len: [{} >= {}]?", data.len(), len)));
+        }
         let shape_ptr: *const i64 = shape.as_ptr();
         let shape_len = shape.len();
         let memory_info = MemoryInfo::new_cpu(AllocatorType::Arena, MemType::Default)?;
@@ -241,11 +255,11 @@ impl<'a> RustOwnerValue<&'a [u8]> {
                 shape_len as _,
                 type_,
                 &mut value_ptr
-            ) -> Error::CreateTensorWithData;
+            ) -> crate::Error::CreateTensorWithData;
             nonNull(value_ptr)
         ];
         let mut is_tensor = 0;
-        ortsys![unsafe IsTensor(value_ptr, &mut is_tensor) -> Error::FailedTensorCheck];
+        ortsys![unsafe IsTensor(value_ptr, &mut is_tensor) -> crate::Error::FailedTensorCheck];
         assert_eq!(is_tensor, 1);
         Ok(Self {
             ptr: value_ptr,
@@ -257,10 +271,12 @@ impl<'a> RustOwnerValue<&'a [u8]> {
 
 impl<'a> RustOwnerValue<&'a mut [u8]> {
     /// for shared memory
-    pub fn with_any_type_mut(shape: &[i64], data: &'a mut [u8], type_: ONNXTensorElementDataType) -> crate::Result<Self> {
+    pub fn with_any_type_mut(shape: &[i64], data: &'a mut [u8], type_: ONNXTensorElementDataType) -> crate::Result<Self, RunError> {
         let size = get_type_size(type_).unwrap();
         let len = shape.iter().fold(1, |a, b| a * b) as usize * size;
-        assert_eq!(len, data.len());
+        if data.len() < len {
+            return Err(RunError::Msg(format!("data len should be >= target len: [{} >= {}]?", data.len(), len)));
+        }
         let shape_ptr: *const i64 = shape.as_ptr();
         let shape_len = shape.len();
         let memory_info = MemoryInfo::new_cpu(AllocatorType::Arena, MemType::Default)?;
@@ -276,11 +292,11 @@ impl<'a> RustOwnerValue<&'a mut [u8]> {
                 shape_len as _,
                 type_,
                 &mut value_ptr
-            ) -> Error::CreateTensorWithData;
+            ) -> crate::Error::CreateTensorWithData;
             nonNull(value_ptr)
         ];
         let mut is_tensor = 0;
-        ortsys![unsafe IsTensor(value_ptr, &mut is_tensor) -> Error::FailedTensorCheck];
+        ortsys![unsafe IsTensor(value_ptr, &mut is_tensor) -> crate::Error::FailedTensorCheck];
         assert_eq!(is_tensor, 1);
         Ok(Self {
             ptr: value_ptr,
@@ -493,7 +509,7 @@ impl super::Session {
 				output_names.as_ptr(),
 				output_names.len() as _,
 				output_tensor_ptrs.as_mut_ptr()
-			) -> Error::SessionRun
+			) -> crate::Error::SessionRun
 		];
         Ok(())
     }
@@ -530,7 +546,7 @@ impl super::Session {
 				output_names.as_ptr(),
 				output_names.len() as _,
 				outputs.as_mut_ptr()
-			) -> Error::SessionRun
+			) -> crate::Error::SessionRun
 		];
         Ok(())
     }
