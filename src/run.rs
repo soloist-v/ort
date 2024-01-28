@@ -1,7 +1,9 @@
 use std::ffi::CString;
 use std::fmt::Debug;
 use std::sync::Arc;
-use ort_sys::ONNXTensorElementDataType;
+
+pub use ort_sys::ONNXTensorElementDataType;
+
 use crate::{AllocatorType, Error, IntoTensorElementType, MemoryInfo, MemType, ortsys, RunOptions};
 use crate::error::assert_non_null_pointer;
 
@@ -128,10 +130,7 @@ pub fn get_type_size(type_: ONNXTensorElementDataType) -> usize {
 
 impl<'a> RustOwnerValue<&'a [u8]> {
     /// for shared memory
-    pub fn with_any_type(shape: &[i64], data: &'a [u8], type_: i32) -> crate::Result<Self> {
-        assert!(type_ >= ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED as i32 &&
-            type_ <= ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_BFLOAT16 as i32);
-        let type_ = unsafe { std::mem::transmute(type_) };
+    pub fn with_any_type(shape: &[i64], data: &'a [u8], type_: ONNXTensorElementDataType) -> crate::Result<Self> {
         let size = get_type_size(type_);
         let len = shape.iter().fold(1, |a, b| a * b) as usize * size;
         assert_eq!(len, data.len());
@@ -166,10 +165,7 @@ impl<'a> RustOwnerValue<&'a [u8]> {
 
 impl<'a> RustOwnerValue<&'a mut [u8]> {
     /// for shared memory
-    pub fn with_any_type_mut(shape: &[i64], data: &'a mut [u8], type_: i32) -> crate::Result<Self> {
-        assert!(type_ >= ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED as i32 &&
-            type_ <= ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_BFLOAT16 as i32);
-        let type_ = unsafe { std::mem::transmute(type_) };
+    pub fn with_any_type_mut(shape: &[i64], data: &'a mut [u8], type_: ONNXTensorElementDataType) -> crate::Result<Self> {
         let size = get_type_size(type_);
         let len = shape.iter().fold(1, |a, b| a * b) as usize * size;
         assert_eq!(len, data.len());
