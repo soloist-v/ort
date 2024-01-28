@@ -112,8 +112,8 @@ impl<Container, T> RustOwnerValue<Container>
     }
 }
 
-pub fn get_type_size(type_: ONNXTensorElementDataType) -> usize {
-    match type_ {
+pub fn get_type_size(type_: ONNXTensorElementDataType) -> Result<usize, &'static str> {
+    let size = match type_ {
         ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED => { 0 }
         ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT => { 4 }
         ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8 => { 1 }
@@ -122,7 +122,7 @@ pub fn get_type_size(type_: ONNXTensorElementDataType) -> usize {
         ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_INT16 => { 2 }
         ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32 => { 4 }
         ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64 => { 8 }
-        ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING => { panic!("not implement") }
+        ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING => { return Err("unsupported ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING"); }
         ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_BOOL => { 1 }
         ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16 => { 2 }
         ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE => { 8 }
@@ -131,7 +131,83 @@ pub fn get_type_size(type_: ONNXTensorElementDataType) -> usize {
         ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_COMPLEX64 => { 8 }
         ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_COMPLEX128 => { 16 }
         ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_BFLOAT16 => { 2 }
-    }
+    };
+    Ok(size)
+}
+
+pub fn convert_to_onnx_el_type(i: i32) -> Result<ONNXTensorElementDataType, String> {
+    const ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED: i32 = ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED as i32;
+    const ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT: i32 = ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT as i32;
+    const ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8: i32 = ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8 as i32;
+    const ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8: i32 = ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8 as i32;
+    const ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT16: i32 = ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT16 as i32;
+    const ONNX_TENSOR_ELEMENT_DATA_TYPE_INT16: i32 = ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_INT16 as i32;
+    const ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32: i32 = ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32 as i32;
+    const ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64: i32 = ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64 as i32;
+    const ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING: i32 = ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING as i32;
+    const ONNX_TENSOR_ELEMENT_DATA_TYPE_BOOL: i32 = ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_BOOL as i32;
+    const ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16: i32 = ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16 as i32;
+    const ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE: i32 = ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE as i32;
+    const ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT32: i32 = ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT32 as i32;
+    const ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT64: i32 = ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT64 as i32;
+    const ONNX_TENSOR_ELEMENT_DATA_TYPE_COMPLEX64: i32 = ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_COMPLEX64 as i32;
+    const ONNX_TENSOR_ELEMENT_DATA_TYPE_COMPLEX128: i32 = ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_COMPLEX128 as i32;
+    const ONNX_TENSOR_ELEMENT_DATA_TYPE_BFLOAT16: i32 = ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_BFLOAT16 as i32;
+    let t = match i {
+        ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED => {
+            ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED
+        }
+        ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT => {
+            ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT
+        }
+        ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8 => {
+            ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8
+        }
+        ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8 => {
+            ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8
+        }
+        ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT16 => {
+            ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT16
+        }
+        ONNX_TENSOR_ELEMENT_DATA_TYPE_INT16 => {
+            ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_INT16
+        }
+        ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32 => {
+            ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32
+        }
+        ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64 => {
+            ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64
+        }
+        ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING => {
+            ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING
+        }
+        ONNX_TENSOR_ELEMENT_DATA_TYPE_BOOL => {
+            ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_BOOL
+        }
+        ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16 => {
+            ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16
+        }
+        ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE => {
+            ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE
+        }
+        ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT32 => {
+            ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT32
+        }
+        ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT64 => {
+            ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT64
+        }
+        ONNX_TENSOR_ELEMENT_DATA_TYPE_COMPLEX64 => {
+            ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_COMPLEX64
+        }
+        ONNX_TENSOR_ELEMENT_DATA_TYPE_COMPLEX128 => {
+            ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_COMPLEX128
+        }
+        ONNX_TENSOR_ELEMENT_DATA_TYPE_BFLOAT16 => {
+            ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_BFLOAT16
+        }
+        _ => { return Err(format!("unknown type: {i}")); }
+    };
+    Ok(t)
 }
 
 impl<'a> RustOwnerValue<&'a [u8]> {

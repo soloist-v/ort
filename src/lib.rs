@@ -49,7 +49,7 @@ pub use self::session::{InMemorySession, RunOptions, Session, SessionBuilder, Se
 pub use self::tensor::{ArrayExtensions, ArrayViewHolder, Tensor, TensorData};
 pub use self::tensor::{ExtractTensorData, IntoTensorElementType, TensorElementType};
 pub use self::value::{Value, ValueRef, ValueType};
-pub use self::run::{RustOwnerValue, Values, Names, get_type_size, ONNXTensorElementDataType};
+pub use self::run::{RustOwnerValue, Values, Names, ONNXTensorElementDataType, get_type_size, convert_to_onnx_el_type};
 
 #[cfg(not(all(target_arch = "x86", target_os = "windows")))]
 macro_rules! extern_system_fn {
