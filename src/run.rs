@@ -21,8 +21,12 @@ impl<Container> Drop for RustOwnerValue<Container> {
 }
 
 impl<Container> RustOwnerValue<Container> {
-    pub fn into_container(self) -> Container {
-        self.owner
+    pub fn into_container(mut self) -> Container {
+        ortsys![unsafe ReleaseValue(self.ptr)];
+        let _memory_info = std::mem::replace(&mut self._memory_info, unsafe { std::mem::zeroed() });
+        let owner = std::mem::replace(&mut self.owner, unsafe { std::mem::zeroed() });
+        std::mem::forget(self);
+        owner
     }
 }
 
