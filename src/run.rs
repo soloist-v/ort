@@ -14,6 +14,12 @@ pub struct RustOwnerValue<Container> {
     _memory_info: MemoryInfo,
 }
 
+impl<Container> Drop for RustOwnerValue<Container> {
+    fn drop(&mut self) {
+        ortsys![unsafe ReleaseValue(self.ptr)];
+    }
+}
+
 impl<Container, T> RustOwnerValue<Container>
     where
         Container: std::ops::Deref<Target=[T]>,
