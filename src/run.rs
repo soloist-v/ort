@@ -213,7 +213,7 @@ pub fn convert_to_onnx_el_type(i: i32) -> Result<ONNXTensorElementDataType, Stri
 impl<'a> RustOwnerValue<&'a [u8]> {
     /// for shared memory
     pub fn with_any_type(shape: &[i64], data: &'a [u8], type_: ONNXTensorElementDataType) -> crate::Result<Self> {
-        let size = get_type_size(type_);
+        let size = get_type_size(type_).unwrap();
         let len = shape.iter().fold(1, |a, b| a * b) as usize * size;
         assert_eq!(len, data.len());
         let shape_ptr: *const i64 = shape.as_ptr();
@@ -248,7 +248,7 @@ impl<'a> RustOwnerValue<&'a [u8]> {
 impl<'a> RustOwnerValue<&'a mut [u8]> {
     /// for shared memory
     pub fn with_any_type_mut(shape: &[i64], data: &'a mut [u8], type_: ONNXTensorElementDataType) -> crate::Result<Self> {
-        let size = get_type_size(type_);
+        let size = get_type_size(type_).unwrap();
         let len = shape.iter().fold(1, |a, b| a * b) as usize * size;
         assert_eq!(len, data.len());
         let shape_ptr: *const i64 = shape.as_ptr();
