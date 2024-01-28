@@ -104,13 +104,37 @@ impl<Container, T> RustOwnerValue<Container>
     }
 }
 
+pub fn get_type_size(type_: ONNXTensorElementDataType) -> usize {
+    match type_ {
+        ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED => { 0 }
+        ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT => { 4 }
+        ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8 => { 1 }
+        ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8 => { 1 }
+        ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT16 => { 2 }
+        ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_INT16 => { 2 }
+        ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32 => { 4 }
+        ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64 => { 8 }
+        ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING => { panic!("not implement") }
+        ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_BOOL => { 1 }
+        ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16 => { 2 }
+        ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE => { 8 }
+        ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT32 => { 4 }
+        ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT64 => { 8 }
+        ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_COMPLEX64 => { 8 }
+        ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_COMPLEX128 => { 16 }
+        ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_BFLOAT16 => { 2 }
+    }
+}
+
 impl<'a> RustOwnerValue<&'a [u8]> {
     /// for shared memory
     pub fn with_any_type(shape: &[i64], data: &'a [u8], type_: i32) -> crate::Result<Self> {
         assert!(type_ >= ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED as i32 &&
             type_ <= ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_BFLOAT16 as i32);
-        let len = shape.iter().fold(1, |a, b| a * b);
-        assert_eq!(len as usize, data.len());
+        let type_ = unsafe { std::mem::transmute(type_) };
+        let size = get_type_size(type_);
+        let len = shape.iter().fold(1, |a, b| a * b) as usize * size;
+        assert_eq!(len, data.len());
         let shape_ptr: *const i64 = shape.as_ptr();
         let shape_len = shape.len();
         let memory_info = MemoryInfo::new_cpu(AllocatorType::Arena, MemType::Default)?;
@@ -124,7 +148,7 @@ impl<'a> RustOwnerValue<&'a [u8]> {
                 data.len() as _,
                 shape_ptr,
                 shape_len as _,
-                std::mem::transmute(type_),
+                type_,
                 &mut value_ptr
             ) -> Error::CreateTensorWithData;
             nonNull(value_ptr)
@@ -145,8 +169,10 @@ impl<'a> RustOwnerValue<&'a mut [u8]> {
     pub fn with_any_type_mut(shape: &[i64], data: &'a mut [u8], type_: i32) -> crate::Result<Self> {
         assert!(type_ >= ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED as i32 &&
             type_ <= ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_BFLOAT16 as i32);
-        let len = shape.iter().fold(1, |a, b| a * b);
-        assert_eq!(len as usize, data.len());
+        let type_ = unsafe { std::mem::transmute(type_) };
+        let size = get_type_size(type_);
+        let len = shape.iter().fold(1, |a, b| a * b) as usize * size;
+        assert_eq!(len, data.len());
         let shape_ptr: *const i64 = shape.as_ptr();
         let shape_len = shape.len();
         let memory_info = MemoryInfo::new_cpu(AllocatorType::Arena, MemType::Default)?;
@@ -160,7 +186,7 @@ impl<'a> RustOwnerValue<&'a mut [u8]> {
                 data.len() as _,
                 shape_ptr,
                 shape_len as _,
-                std::mem::transmute(type_),
+                type_,
                 &mut value_ptr
             ) -> Error::CreateTensorWithData;
             nonNull(value_ptr)
